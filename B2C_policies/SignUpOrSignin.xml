@@ -1,0 +1,346 @@
+﻿<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<TrustFrameworkPolicy xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+	xmlns="http://schemas.microsoft.com/online/cpim/schemas/2013/06" 
+	PolicySchemaVersion="0.3.0.0"
+	TenantId="{Settings:Tenant}" 
+	PolicyId="B2C_1A_signup_signin"
+	PublicPolicyUri="http://{Settings:Tenant}/B2C_1A_signup_signin" 
+	DeploymentMode="Development"
+	UserJourneyRecorderEndpoint="urn:journeyrecorder:applicationinsights">
+
+	<BasePolicy>
+		<TenantId>{Settings:Tenant}</TenantId>
+		<PolicyId>B2C_1A_TrustFrameworkExtensions</PolicyId>
+	</BasePolicy>
+
+	<BuildingBlocks>
+		<ClaimsSchema>
+			<ClaimType Id="isForgotPassword">
+				<DisplayName>isForgotPassword</DisplayName>
+				<DataType>boolean</DataType>
+				<AdminHelpText>Whether the user has selected Forgot your Password</AdminHelpText>
+			</ClaimType>
+			<ClaimType Id="inputEmailAddress">
+				<DisplayName>E-mail Address</DisplayName>
+				<DataType>string</DataType>
+				<UserInputType>TextBox</UserInputType>
+			</ClaimType>
+			<ClaimType Id="userMessage">
+				<DisplayName></DisplayName>
+				<DataType>string</DataType>
+				<UserInputType>Paragraph</UserInputType>
+			</ClaimType>
+			<ClaimType Id="emails">
+				<DisplayName>Email Addresses</DisplayName>
+				<DataType>stringCollection</DataType>
+				<AdminHelpText>Email addresses of the user.</AdminHelpText>
+				<UserHelpText>Your email addresses.</UserHelpText>
+			</ClaimType>
+			<ClaimType Id="email">
+				<DisplayName>Email Address</DisplayName>
+				<DataType>string</DataType>
+				<DefaultPartnerClaimTypes>
+					<Protocol Name="OpenIdConnect" PartnerClaimType="email" />
+				</DefaultPartnerClaimTypes>
+				<UserHelpText>Email address that can be used to contact you.</UserHelpText>
+				<UserInputType>TextBox</UserInputType>
+				<Restriction>
+					<Pattern
+						RegularExpression="^[a-zA-Z0-9.!#$%&amp;'^_`{}~-]+@[a-zA-Z0-9-]+(?:\.[a-zA-Z0-9-]+)*$"
+						HelpText="Please enter a valid email address." />
+				</Restriction>
+			</ClaimType>
+		</ClaimsSchema>
+
+		<ClaimsTransformations>
+			<ClaimsTransformation Id="CopyEmailAddressFromInput"
+				TransformationMethod="FormatStringClaim">
+				<InputClaims>
+					<InputClaim ClaimTypeReferenceId="inputEmailAddress"
+						TransformationClaimType="inputClaim" />
+				</InputClaims>
+				<InputParameters>
+					<InputParameter Id="stringFormat" DataType="string" Value="{0}" />
+				</InputParameters>
+				<OutputClaims>
+					<OutputClaim ClaimTypeReferenceId="email" TransformationClaimType="outputClaim" />
+				</OutputClaims>
+			</ClaimsTransformation>
+			<ClaimsTransformation Id="CreateEmailsFromOtherMailsAndSignInNamesInfo" TransformationMethod="AddItemToStringCollection">
+				<InputClaims>
+					<InputClaim ClaimTypeReferenceId="signInName" TransformationClaimType="item" />
+					<InputClaim ClaimTypeReferenceId="otherMails" TransformationClaimType="collection" />
+				</InputClaims>
+				<OutputClaims>
+					<OutputClaim ClaimTypeReferenceId="emails" TransformationClaimType="collection" />
+				</OutputClaims>
+			</ClaimsTransformation>
+		</ClaimsTransformations>
+		<ContentDefinitions>
+			<ContentDefinition Id="api.signuporsignin">
+				<RecoveryUri>~/common/default_page_error.html</RecoveryUri>
+				<DataUri>urn:com:microsoft:aad:b2c:elements:contract:unifiedssp:2.1.9</DataUri>
+				<Metadata>
+					<Item Key="DisplayName">User Sign In</Item>
+					<Item Key="setting.forgotPasswordLinkOverride">ForgotPasswordExchange</Item>
+					<Item Key="setting.forgotPasswordLinkLocation">AfterButtons</Item>
+					<Item Key="setting.showSignupLink">false</Item>
+				</Metadata>
+			</ContentDefinition>
+		</ContentDefinitions>
+	</BuildingBlocks>
+
+	<ClaimsProviders>
+		<ClaimsProvider>
+			<DisplayName>Local Account</DisplayName>
+			<TechnicalProfiles>
+				<TechnicalProfile Id="ForgotPassword">
+					<DisplayName>Forgot your password?</DisplayName>
+					<Protocol Name="Proprietary" Handler="Web.TPEngine.Providers.ClaimsTransformationProtocolProvider, Web.TPEngine, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null" />
+					<OutputClaims>
+						<OutputClaim ClaimTypeReferenceId="isForgotPassword" DefaultValue="true" AlwaysUseDefaultValue="true" />
+					</OutputClaims>
+				</TechnicalProfile>
+				<TechnicalProfile Id="SelfAsserted-LocalAccountSignin-Email">
+					<DisplayName>Local Account Signin</DisplayName>
+					<Protocol Name="Proprietary" Handler="Web.TPEngine.Providers.SelfAssertedAttributeProvider, Web.TPEngine, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null" />
+					<Metadata>
+						<Item Key="setting.operatingMode">Email</Item>
+						<Item Key="ContentDefinitionReferenceId">api.signuporsignin</Item>
+						<Item Key="setting.forgotPasswordLinkOverride">ForgotPasswordExchange</Item>
+						<Item Key="setting.enableRememberMe">False</Item>
+					</Metadata>
+					<IncludeInSso>false</IncludeInSso>
+					<InputClaims>
+						<InputClaim ClaimTypeReferenceId="signInName" />
+						<InputClaim ClaimTypeReferenceId="password" />
+					</InputClaims>
+					<OutputClaims>
+						<OutputClaim ClaimTypeReferenceId="signInName" Required="true" />
+						<OutputClaim ClaimTypeReferenceId="password" Required="true" />
+						<OutputClaim ClaimTypeReferenceId="objectId" />
+					</OutputClaims>
+					<ValidationTechnicalProfiles>
+						<ValidationTechnicalProfile ReferenceId="login-NonInteractive" />
+					</ValidationTechnicalProfiles>
+					<UseTechnicalProfileForSessionManagement ReferenceId="SM-AAD" />
+				</TechnicalProfile>
+
+				<TechnicalProfile Id="SelfAsserted-RequestPasswordResetUserMessage">
+					<DisplayName>Password reset</DisplayName>
+					<Protocol Name="Proprietary" Handler="Web.TPEngine.Providers.SelfAssertedAttributeProvider, Web.TPEngine, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null" />
+					<Metadata>
+						<Item Key="ContentDefinitionReferenceId">api.selfasserted</Item>
+						<Item Key="setting.showContinueButton">false</Item>
+						<Item Key="setting.showCancelButton">false</Item>
+					</Metadata>
+					<InputClaims>
+						<InputClaim ClaimTypeReferenceId="userMessage" DefaultValue="An email to reset your password has been sent" />
+					</InputClaims>
+					<OutputClaims>
+						<OutputClaim ClaimTypeReferenceId="userMessage" />
+					</OutputClaims>
+					<UseTechnicalProfileForSessionManagement ReferenceId="SM-Noop" />
+				</TechnicalProfile>
+			</TechnicalProfiles>
+		</ClaimsProvider>
+
+		<!-- REST call to LogicApp for password reset email with magic link-->
+		<ClaimsProvider>
+			<DisplayName>REST APIs</DisplayName>
+			<TechnicalProfiles>
+				<TechnicalProfile Id="SendPasswordChangeRequest">
+					<DisplayName>Invokes LogicApp to send reset password email</DisplayName>
+					<Protocol Name="Proprietary"
+						Handler="Web.TPEngine.Providers.RestfulProvider, Web.TPEngine, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null" />
+					<Metadata>
+						<Item Key="ServiceUrl">{Settings:LogicAppSendPasswordResetUrl}</Item>
+						<Item Key="AuthenticationType">None</Item>
+						<Item Key="SendClaimsIn">Body</Item>
+						<Item Key="AllowInsecureAuthInProduction">true</Item>
+					</Metadata>
+					<InputClaims>
+						<InputClaim Required="true" ClaimTypeReferenceId="email" />
+					</InputClaims>
+					<UseTechnicalProfileForSessionManagement ReferenceId="SM-Noop" />
+				</TechnicalProfile>
+			</TechnicalProfiles>
+		</ClaimsProvider>
+
+
+		<ClaimsProvider>
+			<DisplayName>Technical Profiles to collect user's details</DisplayName>
+			<TechnicalProfiles>
+				<TechnicalProfile Id="UserInformationCollector">
+					<DisplayName>Collect User Input Technical Profile</DisplayName>
+					<Protocol Name="Proprietary" Handler="Web.TPEngine.Providers.SelfAssertedAttributeProvider, Web.TPEngine, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null" />
+					<Metadata>
+						<Item Key="ContentDefinitionReferenceId">api.selfasserted</Item>
+					</Metadata>
+					<DisplayClaims>
+						<DisplayClaim ClaimTypeReferenceId="inputEmailAddress" Required="true" />
+					</DisplayClaims>
+					<OutputClaims>
+						<OutputClaim ClaimTypeReferenceId="inputEmailAddress" />
+					</OutputClaims>
+
+				</TechnicalProfile>
+			</TechnicalProfiles>
+		</ClaimsProvider>
+
+		<ClaimsProvider>
+			<DisplayName>Claim Generator Technical Profiles</DisplayName>
+			<TechnicalProfiles>
+				<TechnicalProfile Id="ClaimGenerator">
+					<DisplayName>Generate email claim</DisplayName>
+					<Protocol Name="Proprietary"
+						Handler="Web.TPEngine.Providers.ClaimsTransformationProtocolProvider, Web.TPEngine, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null" />
+					<OutputClaims>
+						<OutputClaim ClaimTypeReferenceId="email" />
+					</OutputClaims>
+					<OutputClaimsTransformations>
+						<OutputClaimsTransformation ReferenceId="CopyEmailAddressFromInput" />
+					</OutputClaimsTransformations>
+				</TechnicalProfile>
+			</TechnicalProfiles>
+		</ClaimsProvider>
+
+		<ClaimsProvider>
+			<DisplayName>Claim Generator Technical Profiles</DisplayName>
+			<TechnicalProfiles>
+				<TechnicalProfile Id="OutputClaimGenerator">
+					<DisplayName>Generate email claim</DisplayName>
+					<Protocol Name="Proprietary"
+						Handler="Web.TPEngine.Providers.ClaimsTransformationProtocolProvider, Web.TPEngine, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null" />
+					<OutputClaims>
+						<OutputClaim ClaimTypeReferenceId="email" />
+					</OutputClaims>
+					<OutputClaimsTransformations>
+						<OutputClaimsTransformation
+							ReferenceId="CreateEmailsFromOtherMailsAndSignInNamesInfo" />
+					</OutputClaimsTransformations>
+				</TechnicalProfile>
+			</TechnicalProfiles>
+		</ClaimsProvider>
+	</ClaimsProviders>
+
+
+	<UserJourneys>
+		<!-- Signup or Signin UserJourney -->
+		<UserJourney Id="Custom_SignIn_Journey">
+			<OrchestrationSteps>
+				<OrchestrationStep Order="1" Type="CombinedSignInAndSignUp"
+					ContentDefinitionReferenceId="api.signuporsignin">
+					<ClaimsProviderSelections>
+						<ClaimsProviderSelection
+							ValidationClaimsExchangeId="LocalAccountSigninEmailExchange" />
+						<ClaimsProviderSelection TargetClaimsExchangeId="ForgotPasswordExchange" />
+					</ClaimsProviderSelections>
+					<ClaimsExchanges>
+						<ClaimsExchange Id="LocalAccountSigninEmailExchange"
+							TechnicalProfileReferenceId="SelfAsserted-LocalAccountSignin-Email" />
+					</ClaimsExchanges>
+				</OrchestrationStep>
+				<OrchestrationStep Order="2" Type="ClaimsExchange">
+					<Preconditions>
+						<Precondition Type="ClaimsExist" ExecuteActionsIf="true">
+							<Value>objectId</Value>
+							<Action>SkipThisOrchestrationStep</Action>
+						</Precondition>
+					</Preconditions>
+					<ClaimsExchanges>
+						<ClaimsExchange Id="ForgotPasswordExchange"
+							TechnicalProfileReferenceId="ForgotPassword" />
+					</ClaimsExchanges>
+				</OrchestrationStep>
+				<OrchestrationStep Order="3" Type="InvokeSubJourney">
+					<Preconditions>
+						<Precondition Type="ClaimsExist" ExecuteActionsIf="false">
+							<Value>isForgotPassword</Value>
+							<Action>SkipThisOrchestrationStep</Action>
+						</Precondition>
+					</Preconditions>
+					<JourneyList>
+						<Candidate SubJourneyReferenceId="PasswordReset_Login_SubJourney" />
+					</JourneyList>
+				</OrchestrationStep>
+				<OrchestrationStep Order="4" Type="ClaimsExchange">
+					<ClaimsExchanges>
+						<ClaimsExchange Id="AADUserReadWithObjectId"
+							TechnicalProfileReferenceId="AAD-UserReadUsingObjectId" />
+					</ClaimsExchanges>
+				</OrchestrationStep>
+				<OrchestrationStep Order="5" Type="ClaimsExchange">
+					<ClaimsExchanges>
+						<ClaimsExchange Id="GenerateOutputClaims"
+							TechnicalProfileReferenceId="OutputClaimGenerator" />
+					</ClaimsExchanges>
+				</OrchestrationStep>
+				<OrchestrationStep Order="6" Type="SendClaims"
+					CpimIssuerTechnicalProfileReferenceId="JwtIssuer" />
+			</OrchestrationSteps>
+			<ClientDefinition ReferenceId="DefaultWeb" />
+		</UserJourney>
+	</UserJourneys>
+
+	<!-- SubJourney for isPasswordForgot -->
+	<SubJourneys>
+		<SubJourney Id="PasswordReset_Login_SubJourney" Type="Call">
+			<OrchestrationSteps>
+				<OrchestrationStep Order="1" Type="ClaimsExchange">
+					<ClaimsExchanges>
+						<ClaimsExchange Id="GetUserEmailAddress"
+							TechnicalProfileReferenceId="UserInformationCollector" />
+					</ClaimsExchanges>
+				</OrchestrationStep>
+				<OrchestrationStep Order="2" Type="ClaimsExchange">
+					<ClaimsExchanges>
+						<ClaimsExchange Id="SetUserEmailAddressClaim"
+							TechnicalProfileReferenceId="ClaimGenerator" />
+					</ClaimsExchanges>
+				</OrchestrationStep>
+				<OrchestrationStep Order="3" Type="ClaimsExchange">
+					<ClaimsExchanges>
+						<ClaimsExchange Id="TriggerLogicAppEmail"
+							TechnicalProfileReferenceId="SendPasswordChangeRequest" />
+					</ClaimsExchanges>
+				</OrchestrationStep>
+				<OrchestrationStep Order="4" Type="ClaimsExchange">
+					<ClaimsExchanges>
+						<ClaimsExchange Id="BlockSendClaims"
+							TechnicalProfileReferenceId="SelfAsserted-RequestPasswordResetUserMessage" />
+					</ClaimsExchanges>
+				</OrchestrationStep>
+			</OrchestrationSteps>
+		</SubJourney>
+	</SubJourneys>
+
+	<RelyingParty>
+		<DefaultUserJourney ReferenceId="Custom_SignIn_journey" />
+		<Endpoints>
+			<Endpoint Id="Token" UserJourneyReferenceId="RedeemRefreshToken" />
+		</Endpoints>
+		<UserJourneyBehaviors>
+			<JourneyInsights TelemetryEngine="ApplicationInsights"
+				InstrumentationKey="92dcc7d1-f3cb-4977-ade8-82aaf3fd21af" DeveloperMode="true"
+				ClientEnabled="false" ServerEnabled="true" TelemetryVersion="1.0.0" />
+		</UserJourneyBehaviors>
+		<TechnicalProfile Id="PolicyProfile">
+			<DisplayName>PolicyProfile</DisplayName>
+			<Protocol Name="OpenIdConnect" />
+			<OutputClaims>
+				<OutputClaim ClaimTypeReferenceId="displayName" />
+				<OutputClaim ClaimTypeReferenceId="givenName" />
+				<OutputClaim ClaimTypeReferenceId="surname" />
+				<OutputClaim ClaimTypeReferenceId="email" />
+				<OutputClaim ClaimTypeReferenceId="objectId" PartnerClaimType="sub" />
+				<OutputClaim ClaimTypeReferenceId="tenantId" AlwaysUseDefaultValue="true"
+					DefaultValue="{Policy:TenantObjectId}" />
+				<OutputClaim ClaimTypeReferenceId="identityProvider" />
+			</OutputClaims>
+			<SubjectNamingInfo ClaimType="sub" />
+		</TechnicalProfile>
+	</RelyingParty>
+
+</TrustFrameworkPolicy>
